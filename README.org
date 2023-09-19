@@ -1,0 +1,66 @@
+#+TITLE: Remap Omen Key for Windows
+#+SUBTITLE: A reimplementation of remap-omen-key in Unsafe Rust
+
+This is not something I actually use so there will be no support.
+I may accept pull requests if they are reasonable.
+
+*** Build Instruction (from linux)
+I don't actually use windows, but it's probably simpler on Windows anyway.
+**** Install Windows cross-compiling toolchain
+#+BEGIN_SRC sh
+rustup target add x86_64-pc-windows-gnu
+#+END_SRC
+You may also need to install the =mingw-w64-gcc= package on your system.
+**** Compile 
+#+BEGIN_SRC sh
+cargo build --target x86_64-pc-windows-gnu --release
+#+END_SRC
+Now you should have a =remap-omen.exe= binary in =target/x86_64-pc-windows-gnu/release= or a similar directory.
+**** Codesigning
+***** Create a =san.cnf= file
+The contents should be filled in with your own information.
+#+BEGIN_SRC toml
+[req]
+distinguished_name = req_distinguished_name
+x509_extensions = v3_req
+prompt = no
+[req_distinguished_name]
+C = COUNTRY
+ST = STATE
+L = CITY
+O = ORG NAME
+OU = ORG_UNIT
+CN = example.com
+[v3_req]
+keyUsage = critical, digitalSignature, keyAgreement
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = omen.example.com
+DNS.2 = example.com
+#+END_SRC
+***** Generate a self-signed certificate
+The prevous configuration file is used to generate a self-signed rsa key and certificate.
+#+BEGIN_SRC sh
+openssl req -x509 -newkey rsa:4096 -sha256 -keyout omen.key -out omen.crt -days 600 -config san.cnf
+#+END_SRC
+***** Sign the binary using [[https://github.com/mtrojnar/osslsigncode][osslsigncode]]
+#+BEGIN_SRC sh
+osslsigncode sign -certs omen.crt -key omen.key -in remap-omen.exe -out remap-omen-signed.exe
+#+END_SRC
+
+*** Usage
+**** Prerequisites
++ =HPMSGSVC.exe= must be running
++ The executable must be placed in elevated directories (Program Files) to work over elevated processes
++ Add the certificate to the trusted people certificate store by going the properties of the executable and finding the certificate in the certificate tab.
+**** Running
+Run the exe or add a shortcut to the exe to the startup folder to make it run on startup.
+
+** Credits
+This is a reimplementation of prevous work listed below.
++ [[https://github.com/vladislavtsitrikov/remap-omen-key][vladislavtsitrikov's Fork of remap-omen-key]]
++ [[https://github.com/jingyu9575/remap-omen-key][remap-omen-key]]
+
+** License
+[[./LICENSE][Public Domain/CC0]]
